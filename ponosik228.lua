@@ -11,7 +11,7 @@ local function sendChatMessage(text, color)
     })
 end
 
-local client = KasflowsClient.new(game:HttpGet("https://raw.githubusercontent.com/KaSpEr-tv123/kaif/refs/heads/main/link"))
+local client = KasflowsClient.new('http://87.120.166.48:8000')
 
 client:on("connect", function()
 end)
