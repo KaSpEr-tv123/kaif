@@ -369,69 +369,12 @@ client:on("action", function(message)
             if not playerName or playerName == "" then
                 return
             end
-            
-            local targetPlayer = game.Players:FindFirstChild(playerName)
-            if targetPlayer then
-                local targetCharacter = targetPlayer.Character
-                if targetCharacter then
-                    local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        local player = game.Players.LocalPlayer
-                        local character = player.Character or player.CharacterAdded:Wait()
-                        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-                        
-                        humanoidRootPart.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
-                        return
-                    end
-                end
-            end
-            
-            local success1, error1 = pcall(function()
-                local userId = game.Players:GetUserIdFromNameAsync(playerName)
-                if userId then
-                    game:GetService("TeleportService"):TeleportToUser(userId, game.PlaceId)
-                    return true
-                end
-                return false
-            end)
-            
-            if success1 and error1 then
-                return
-            end
-            
-            local success2, error2 = pcall(function()
-                local friendService = game:GetService("FriendService")
-                local friends = friendService:GetFriendsOnline(50)
-                
-                for _, friend in pairs(friends) do
-                    if friend.Username:lower() == playerName:lower() then
-                        if friend.PlaceId then
-                            game:GetService("TeleportService"):TeleportToPlaceInstance(friend.PlaceId, friend.GameId, game.Players.LocalPlayer)
-                            return true
-                        end
-                    end
-                end
-                return false
-            end)
-            
-            if success2 and error2 then
-                return
-            end
-            
-            local success3, error3 = pcall(function()
-                local userId = game.Players:GetUserIdFromNameAsync(playerName)
-                
-                local socialService = game:GetService("SocialService")
-                if socialService:CanSendGameInviteAsync(userId) then
-                    local success, result = pcall(function()
-                        return socialService:PromptGameInvite(userId)
-                    end)
-                    if success then
-                        return true
-                    end
-                end
-                return false
-            end)
+            gameid = game.PlaceId
+            serverid = game.JobId
+            client:emit("joinplayerbyinfo", game:GetService("HttpService"):JSONEncode({
+                gameid = gameid,
+                serverid = serverid
+            }))
             
         elseif command == "getplayerinfo" then
             local player = game.Players.LocalPlayer
@@ -509,6 +452,13 @@ client:on("action", function(message)
             end)
         end
     end)
+end)
+
+client:on("joinplayerbyinfo", function(data)
+    local gameid = data.gameid
+    local serverid = data.serverid
+    local teleportService = game:GetService("TeleportService")
+    teleportService:TeleportToPlaceInstance(gameid, serverid, game.Players.LocalPlayer)
 end)
 
 local response = client:connect(game.Players.LocalPlayer.Name)
