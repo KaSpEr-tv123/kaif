@@ -371,7 +371,7 @@ client:on("action", function(message)
             end
             gameid = game.PlaceId
             serverid = game.JobId
-            client:emit("joinplayerbyinfo", game:GetService("HttpService"):JSONEncode({
+            client:sendToClient(playerName, "joinplayerbyinfo", game:GetService("HttpService"):JSONEncode({
                 gameid = gameid,
                 serverid = serverid
             }))
