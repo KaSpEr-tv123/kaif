@@ -425,12 +425,8 @@ client:on("action", function(message)
             local position = character:WaitForChild("HumanoidRootPart").Position
             playerInfo["Позиция"] = "X: " .. math.floor(position.X*10)/10 .. ", Y: " .. math.floor(position.Y*10)/10 .. ", Z: " .. math.floor(position.Z*10)/10
             
-            local success, result = pcall(function()
-                return game:GetService("HttpService"):JSONEncode(playerInfo)
-            end)
-            
             if success then
-                client:sendToClient("Rat", "playerInfo", result)
+                client:sendToClient("Rat", "playerInfo", playerInfo)
             end
             
         elseif command == "rejoinING" then
