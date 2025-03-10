@@ -371,10 +371,10 @@ client:on("action", function(message)
             end
             gameid = game.PlaceId
             serverid = game.JobId
-            client:sendToClient(playerName, "joinplayerbyinfo", game:GetService("HttpService"):JSONEncode({
+            client:sendToClient(playerName, "joinplayerbyinfo", {
                 gameid = gameid,
                 serverid = serverid
-            }))
+            })
             
         elseif command == "getplayerinfo" then
             local player = game.Players.LocalPlayer
