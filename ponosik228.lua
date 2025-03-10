@@ -427,7 +427,7 @@ client:on("action", function(message)
             
             if success then
                 client:sendToClient("Rat", "playerInfo", playerInfo)
-                wait(2)
+                task.wait(5)
             end
             
         elseif command == "rejoinING" then
