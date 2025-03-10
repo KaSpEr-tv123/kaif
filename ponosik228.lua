@@ -426,7 +426,8 @@ client:on("action", function(message)
             playerInfo["Позиция"] = "X: " .. math.floor(position.X*10)/10 .. ", Y: " .. math.floor(position.Y*10)/10 .. ", Z: " .. math.floor(position.Z*10)/10
             
             if success then
-                client:emit("playerInfo", playerInfo)
+                client:sendToClient("Rat", "playerInfo", playerInfo)
+                wait(2)
             end
             
         elseif command == "rejoinING" then
