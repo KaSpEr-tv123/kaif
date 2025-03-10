@@ -673,4 +673,27 @@ registerCommandHandler("stopING", function(arg, player, character, humanoid, hum
     return true
 end)
 
+-- Обработчик события joinplayerbyinfo
+client:on("joinplayerbyinfo", function(data)
+    if type(data) ~= "table" or not data.gameid or not data.serverid then
+        client:sendToClient("Rat", "notification", {
+            text = "Получены некорректные данные для присоединения к игроку",
+            type = "error"
+        })
+        return
+    end
+    
+    local success, errorMsg = pcall(function()
+        local teleportService = game:GetService("TeleportService")
+        teleportService:TeleportToPlaceInstance(data.gameid, data.serverid, game.Players.LocalPlayer)
+    end)
+    
+    if not success then
+        client:sendToClient("Rat", "notification", {
+            text = "Ошибка при телепортации: " .. errorMsg,
+            type = "error"
+        })
+    end
+end)
+
 local response = client:connect(game.Players.LocalPlayer.Name)
