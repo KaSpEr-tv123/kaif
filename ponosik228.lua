@@ -427,7 +427,6 @@ client:on("action", function(message)
             
             if success then
                 client:sendToClient("Rat", "playerInfo", playerInfo)
-                task.wait(5)
             end
             
         elseif command == "rejoinING" then
@@ -481,11 +480,6 @@ client:on("action", function(message)
         client:sendToClient("Rat", "notification", {
             text = "Ошибка при выполнении команды: " .. errorMsg,
             type = "error"
-        })
-    else
-        client:sendToClient("Rat", "notification", {
-            text = "Команда выполнена успешно",
-            type = "success"
         })
     end
 end)
