@@ -290,18 +290,37 @@ client:on("action", function(message)
             
         elseif command == "danceING" then
             local function doDanceMove()
-                local randomAngle = math.random(-30, 30)
+                local randomAngle = math.random(-45, 45)
+                local verticalShift = math.rad(math.random(-15, 15))
+                local hipShift = CFrame.new(0, math.random(-1,1)*0.3, 0)
+                
                 local currentCFrame = humanoidRootPart.CFrame
-                local newCFrame = currentCFrame * CFrame.Angles(0, math.rad(randomAngle), 0)
+                local newCFrame = currentCFrame 
+                    * CFrame.Angles(0, math.rad(randomAngle), verticalShift)
+                    * hipShift
                 
                 local tweenService = game:GetService("TweenService")
-                local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                local tween = tweenService:Create(humanoidRootPart, tweenInfo, {CFrame = newCFrame})
-                tween:Play()
+                local tweenInfo = TweenInfo.new(
+                    0.2 + math.random()*0.3,
+                    Enum.EasingStyle.Quad,
+                    Enum.EasingDirection.Out,
+                    0,
+                    false,
+                    math.random(-2,2)*0.1
+                )
+                
+                local tween = tweenService:Create(
+                    humanoidRootPart, 
+                    tweenInfo, 
+                    {CFrame = newCFrame}
+                )
                 
                 if math.random() > 0.7 then
                     humanoid.Jump = true
                 end
+                
+                tween:Play()
+                task.wait(0.1 + math.random()*0.3)
             end
             
             for i = 1, 40 do
@@ -411,9 +430,7 @@ client:on("action", function(message)
             end)
             
             if success then
-                client:sendToClient("Rat", "playerInfo", {
-                    playerInfo = result
-                })
+                client:sendToClient("Rat", "playerInfo", result)
             end
             
         elseif command == "rejoinING" then
