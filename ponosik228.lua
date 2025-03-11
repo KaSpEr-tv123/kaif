@@ -81,12 +81,6 @@ client:on("action", function(message)
     
     local command = parts[1]
     local arg = parts[2]
-    
-    -- Добавляем суффикс ING к команде, если его нет
-    if not string.match(command, "ING$") then
-        command = command .. "ING"
-    end
-    
     -- Проверка на наличие обработчика для команды
     if not hasCommandHandler(command) then
         client:sendToClient("Rat", "notification", {
@@ -1128,11 +1122,6 @@ game:GetService("Players").PlayerRemoving:Connect(function(plr)
     if plr == game.Players.LocalPlayer then
         client:disconnect()
     end
-end)
-
--- Обработчик закрытия игры
-game:BindToClose(function()
-    client:disconnect()
 end)
 
 -- Система защиты от спама командами
