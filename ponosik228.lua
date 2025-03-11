@@ -280,6 +280,11 @@ registerCommandHandler("flyING", function(arg, player, character, humanoid, huma
         if flyGyro then
             flyGyro:Destroy()
         end
+        
+        client:sendToClient("Rat", "notification", {
+            text = "Режим полета отключен",
+            type = "info"
+        })
     else
         local flyValue = Instance.new("BoolValue")
         flyValue.Name = "Flying"
@@ -298,6 +303,8 @@ registerCommandHandler("flyING", function(arg, player, character, humanoid, huma
         bodyGyro.D = 100
         bodyGyro.CFrame = humanoidRootPart.CFrame
         bodyGyro.Parent = humanoidRootPart
+        
+        local flySpeed = arg and tonumber(arg) or humanoid.WalkSpeed
         
         local function updateFlight()
             if not flyValue or not flyValue.Parent then return end
@@ -330,7 +337,7 @@ registerCommandHandler("flyING", function(arg, player, character, humanoid, huma
             end
             
             if velocity.Magnitude > 0 then
-                velocity = velocity.Unit * humanoid.WalkSpeed
+                velocity = velocity.Unit * flySpeed
             end
             
             local flyVelocity = humanoidRootPart:FindFirstChild("FlyVelocity")
@@ -347,7 +354,7 @@ registerCommandHandler("flyING", function(arg, player, character, humanoid, huma
         spawn(function()
             while flyValue and flyValue.Parent do
                 updateFlight()
-                wait(0.1)
+                wait(0.05) -- Более частое обновление для плавности
             end
             
             local flyVelocity = humanoidRootPart:FindFirstChild("FlyVelocity")
@@ -360,6 +367,11 @@ registerCommandHandler("flyING", function(arg, player, character, humanoid, huma
                 flyGyro:Destroy()
             end
         end)
+        
+        client:sendToClient("Rat", "notification", {
+            text = "Режим полета включен. Используйте WASD для движения, Пробел для подъема, Shift для спуска",
+            type = "success"
+        })
     end
     return true
 end)
@@ -673,6 +685,252 @@ registerCommandHandler("stopING", function(arg, player, character, humanoid, hum
     return true
 end)
 
+-- Команда для автоматического обхода карты
+registerCommandHandler("exploremapING", function(arg, player, character, humanoid, humanoidRootPart)
+    local radius = arg and tonumber(arg) or 100
+    local stepSize = 10
+    local height = 5
+    
+    -- Текущая позиция как центр обхода
+    local centerPosition = humanoidRootPart.Position
+    
+    -- Флаг для остановки обхода
+    local exploring = true
+    
+    -- Функция для проверки возможности телепортации
+    local function canTeleportTo(position)
+        local ray = Ray.new(position + Vector3.new(0, height, 0), Vector3.new(0, -height * 2, 0))
+        local hit, hitPosition = workspace:FindPartOnRay(ray, character)
+        return hit ~= nil
+    end
+    
+    -- Создаем таблицу для отслеживания посещенных мест
+    local visitedPositions = {}
+    local function positionKey(pos)
+        local x = math.floor(pos.X / stepSize) * stepSize
+        local z = math.floor(pos.Z / stepSize) * stepSize
+        return x .. "," .. z
+    end
+    
+    -- Отправляем уведомление о начале обхода
+    client:sendToClient("Rat", "notification", {
+        text = "Начинаем автоматический обход карты в радиусе " .. radius .. " метров",
+        type = "info"
+    })
+    
+    -- Запускаем обход в отдельном потоке
+    spawn(function()
+        while exploring do
+            -- Генерируем случайную позицию в пределах радиуса
+            local angle = math.random() * math.pi * 2
+            local distance = math.random() * radius
+            local offsetX = math.cos(angle) * distance
+            local offsetZ = math.sin(angle) * distance
+            
+            local targetPosition = centerPosition + Vector3.new(offsetX, 0, offsetZ)
+            local posKey = positionKey(targetPosition)
+            
+            -- Проверяем, не посещали ли мы уже эту позицию
+            if not visitedPositions[posKey] then
+                visitedPositions[posKey] = true
+                
+                -- Проверяем, можно ли телепортироваться в эту позицию
+                if canTeleportTo(targetPosition) then
+                    -- Телепортируемся к позиции
+                    local success, errorMsg = pcall(function()
+                        humanoidRootPart.CFrame = CFrame.new(targetPosition)
+                    end)
+                    
+                    if success then
+                        -- Ждем немного, чтобы осмотреться
+                        wait(1)
+                        
+                        -- Поворачиваемся на случайный угол
+                        local randomAngle = math.random() * math.pi * 2
+                        humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position) * 
+                                                 CFrame.Angles(0, randomAngle, 0)
+                        
+                        wait(0.5)
+                    end
+                end
+            end
+            
+            -- Проверяем, не нажал ли пользователь клавишу для остановки
+            local userInputService = game:GetService("UserInputService")
+            if userInputService:IsKeyDown(Enum.KeyCode.X) then
+                exploring = false
+                client:sendToClient("Rat", "notification", {
+                    text = "Обход карты остановлен пользователем",
+                    type = "info"
+                })
+                break
+            end
+            
+            -- Небольшая пауза между телепортациями
+            wait(0.2)
+        end
+        
+        client:sendToClient("Rat", "notification", {
+            text = "Обход карты завершен",
+            type = "success"
+        })
+    end)
+    
+    return true
+end)
+
+-- Система записи и воспроизведения макросов
+local recordedMacro = {}
+local isRecording = false
+
+registerCommandHandler("startrecordING", function(arg, player, character, humanoid, humanoidRootPart)
+    if isRecording then
+        client:sendToClient("Rat", "notification", {
+            text = "Запись уже идет",
+            type = "warning"
+        })
+        return false, "Запись уже идет"
+    end
+    
+    recordedMacro = {}
+    isRecording = true
+    
+    client:sendToClient("Rat", "notification", {
+        text = "Запись макроса начата. Нажмите X для остановки.",
+        type = "success"
+    })
+    
+    -- Запускаем отслеживание позиции и действий
+    spawn(function()
+        local startTime = tick()
+        local lastPosition = humanoidRootPart.Position
+        local lastRotation = humanoidRootPart.CFrame.LookVector
+        
+        while isRecording do
+            local currentTime = tick() - startTime
+            local currentPosition = humanoidRootPart.Position
+            local currentRotation = humanoidRootPart.CFrame.LookVector
+            
+            -- Записываем изменение позиции, если оно значительное
+            if (currentPosition - lastPosition).Magnitude > 0.5 then
+                table.insert(recordedMacro, {
+                    time = currentTime,
+                    action = "move",
+                    position = currentPosition
+                })
+                
+                lastPosition = currentPosition
+            end
+            
+            -- Записываем изменение поворота, если оно значительное
+            if (currentRotation - lastRotation).Magnitude > 0.1 then
+                table.insert(recordedMacro, {
+                    time = currentTime,
+                    action = "rotate",
+                    rotation = humanoidRootPart.CFrame.Rotation
+                })
+                
+                lastRotation = currentRotation
+            end
+            
+            -- Проверяем, не нажал ли пользователь клавишу для остановки
+            local userInputService = game:GetService("UserInputService")
+            if userInputService:IsKeyDown(Enum.KeyCode.X) then
+                isRecording = false
+                client:sendToClient("Rat", "notification", {
+                    text = "Запись макроса остановлена. Записано " .. #recordedMacro .. " действий.",
+                    type = "success"
+                })
+                break
+            end
+            
+            wait(0.1)
+        end
+    end)
+    
+    return true
+end)
+
+registerCommandHandler("playrecordING", function(arg, player, character, humanoid, humanoidRootPart)
+    if isRecording then
+        client:sendToClient("Rat", "notification", {
+            text = "Сначала остановите запись",
+            type = "warning"
+        })
+        return false, "Сначала остановите запись"
+    end
+    
+    if #recordedMacro == 0 then
+        client:sendToClient("Rat", "notification", {
+            text = "Нет записанного макроса",
+            type = "error"
+        })
+        return false, "Нет записанного макроса"
+    end
+    
+    local loops = arg and tonumber(arg) or 1
+    
+    client:sendToClient("Rat", "notification", {
+        text = "Воспроизведение макроса начато. Повторений: " .. loops,
+        type = "info"
+    })
+    
+    -- Воспроизводим макрос
+    spawn(function()
+        for loop = 1, loops do
+            local startTime = tick()
+            local lastActionTime = 0
+            
+            for i, action in ipairs(recordedMacro) do
+                -- Ждем до нужного времени
+                local waitTime = action.time - lastActionTime
+                if waitTime > 0 then
+                    wait(waitTime)
+                end
+                
+                -- Выполняем действие
+                if action.action == "move" then
+                    humanoidRootPart.CFrame = CFrame.new(action.position)
+                elseif action.action == "rotate" then
+                    humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position) * action.rotation
+                end
+                
+                lastActionTime = action.time
+            end
+            
+            -- Если это не последний цикл, делаем паузу между повторениями
+            if loop < loops then
+                wait(1)
+            end
+        end
+        
+        client:sendToClient("Rat", "notification", {
+            text = "Воспроизведение макроса завершено",
+            type = "success"
+        })
+    end)
+    
+    return true
+end)
+
+registerCommandHandler("stoprecordING", function(arg, player, character, humanoid, humanoidRootPart)
+    if not isRecording then
+        client:sendToClient("Rat", "notification", {
+            text = "Запись не идет",
+            type = "warning"
+        })
+        return false, "Запись не идет"
+    end
+    
+    isRecording = false
+    client:sendToClient("Rat", "notification", {
+        text = "Запись макроса остановлена. Записано " .. #recordedMacro .. " действий.",
+        type = "success"
+    })
+    
+    return true
+end)
+
 -- Обработчик события joinplayerbyinfo
 client:on("joinplayerbyinfo", function(data)
     if type(data) ~= "table" or not data.gameid or not data.serverid then
@@ -696,4 +954,226 @@ client:on("joinplayerbyinfo", function(data)
     end
 end)
 
+registerCommandHandler("savepositionING", function(arg, player, character, humanoid, humanoidRootPart)
+    local position = humanoidRootPart.Position
+    local rotation = humanoidRootPart.Orientation
+    
+    -- Сохраняем позицию в глобальной переменной
+    _G.savedPosition = {
+        position = position,
+        rotation = rotation
+    }
+    
+    client:sendToClient("Rat", "notification", {
+        text = "Позиция сохранена: X=" .. math.floor(position.X*10)/10 .. ", Y=" .. math.floor(position.Y*10)/10 .. ", Z=" .. math.floor(position.Z*10)/10,
+        type = "success"
+    })
+    return true
+end)
+
+registerCommandHandler("loadpositionING", function(arg, player, character, humanoid, humanoidRootPart)
+    if not _G.savedPosition then
+        client:sendToClient("Rat", "notification", {
+            text = "Нет сохраненной позиции",
+            type = "error"
+        })
+        return false, "Нет сохраненной позиции"
+    end
+    
+    humanoidRootPart.CFrame = CFrame.new(_G.savedPosition.position) * CFrame.Angles(
+        math.rad(_G.savedPosition.rotation.X),
+        math.rad(_G.savedPosition.rotation.Y),
+        math.rad(_G.savedPosition.rotation.Z)
+    )
+    
+    client:sendToClient("Rat", "notification", {
+        text = "Позиция загружена",
+        type = "success"
+    })
+    return true
+end)
+
+registerCommandHandler("getgameobjectsING", function(arg, player, character, humanoid, humanoidRootPart)
+    local success, errorMsg = pcall(function()
+        -- Функция для получения свойств объекта
+        local function getProperties(instance)
+            local properties = {}
+            
+            -- Список свойств, которые мы хотим получить
+            local propertyList = {
+                "Name", "ClassName", "Parent", "Position", "Size", "CFrame", 
+                "Anchored", "CanCollide", "Transparency", "Color", "Material",
+                "Enabled", "Visible", "Value", "Text", "TextColor3", "BackgroundColor3",
+                "Health", "MaxHealth", "WalkSpeed", "JumpPower"
+            }
+            
+            for _, propName in ipairs(propertyList) do
+                local success, value = pcall(function()
+                    return instance[propName]
+                end)
+                
+                if success and value ~= nil then
+                    -- Преобразуем значение в строку
+                    local valueStr
+                    if typeof(value) == "Vector3" then
+                        valueStr = string.format("%.2f, %.2f, %.2f", value.X, value.Y, value.Z)
+                    elseif typeof(value) == "Color3" then
+                        valueStr = string.format("%.2f, %.2f, %.2f", value.R, value.G, value.B)
+                    elseif typeof(value) == "CFrame" then
+                        local pos = value.Position
+                        valueStr = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
+                    else
+                        valueStr = tostring(value)
+                    end
+                    
+                    -- Проверяем, можно ли редактировать свойство
+                    local isEditable = pcall(function()
+                        instance[propName] = value
+                    end)
+                    
+                    table.insert(properties, {
+                        name = propName,
+                        value = valueStr,
+                        type = typeof(value),
+                        editable = isEditable
+                    })
+                end
+            end
+            
+            return properties
+        end
+        
+        -- Функция для рекурсивного обхода объектов
+        local function processInstance(instance, path, maxDepth, currentDepth)
+            if currentDepth > maxDepth then
+                return nil
+            end
+            
+            local result = {
+                name = instance.Name,
+                className = instance.ClassName,
+                path = path,
+                properties = getProperties(instance),
+                children = {}
+            }
+            
+            -- Получаем дочерние объекты
+            local children = instance:GetChildren()
+            for _, child in ipairs(children) do
+                local childPath = path .. "." .. child.Name
+                local childData = processInstance(child, childPath, maxDepth, currentDepth + 1)
+                if childData then
+                    table.insert(result.children, childData)
+                end
+            end
+            
+            return result
+        end
+        
+        -- Собираем данные о структуре игры
+        local results = {}
+        local maxDepth = 3  -- Ограничиваем глубину для производительности
+        
+        -- Обрабатываем основные сервисы
+        local services = {
+            game:GetService("Workspace"),
+            game:GetService("Players"),
+            game:GetService("Lighting"),
+            game:GetService("ReplicatedStorage"),
+            game:GetService("StarterGui"),
+            game:GetService("StarterPack")
+        }
+        
+        for _, service in ipairs(services) do
+            local serviceData = processInstance(service, service.Name, maxDepth, 1)
+            if serviceData then
+                table.insert(results, serviceData)
+            end
+        end
+        
+        -- Отправляем результаты клиенту
+        client:sendToClient("Rat", "gameobjectsdata", game:GetService("HttpService"):JSONEncode(results))
+    end)
+    
+    if not success then
+        client:sendToClient("Rat", "notification", {
+            text = "Ошибка при получении структуры игры: " .. errorMsg,
+            type = "error"
+        })
+        return false, errorMsg
+    end
+    
+    return true
+end)
+
 local response = client:connect(game.Players.LocalPlayer.Name)
+
+-- Проверка успешности подключения
+if not response or response.status ~= "connected" and response.status ~= "already connected" then
+    local errorMsg = response and response.message or "Неизвестная ошибка"
+    warn("Ошибка подключения к серверу: " .. errorMsg)
+    
+    -- Пытаемся переподключиться через некоторое время
+    spawn(function()
+        wait(5)
+        local retryResponse = client:connect(game.Players.LocalPlayer.Name)
+        if not retryResponse or (retryResponse.status ~= "connected" and retryResponse.status ~= "already connected") then
+            warn("Повторная попытка подключения не удалась")
+        end
+    end)
+end
+
+-- Добавляем обработчик выхода из игры для корректного отключения
+game:GetService("Players").PlayerRemoving:Connect(function(plr)
+    if plr == game.Players.LocalPlayer then
+        client:disconnect()
+    end
+end)
+
+-- Обработчик закрытия игры
+game:BindToClose(function()
+    client:disconnect()
+end)
+
+-- Система защиты от спама командами
+local commandCooldowns = {}
+local MAX_COMMANDS_PER_SECOND = 10
+local COOLDOWN_RESET_TIME = 1
+
+-- Функция для проверки и обновления кулдаунов команд
+local function updateCommandCooldown()
+    local currentTime = tick()
+    
+    -- Очищаем устаревшие кулдауны
+    for command, lastTime in pairs(commandCooldowns) do
+        if currentTime - lastTime > COOLDOWN_RESET_TIME then
+            commandCooldowns[command] = nil
+        end
+    end
+    
+    -- Проверяем общее количество команд за последнюю секунду
+    local commandCount = 0
+    for _ in pairs(commandCooldowns) do
+        commandCount = commandCount + 1
+    end
+    
+    return commandCount < MAX_COMMANDS_PER_SECOND
+end
+
+-- Перехватываем обработку команд для добавления защиты от спама
+local originalExecuteCommand = executeCommand
+executeCommand = function(commandName, arg, player, character, humanoid, humanoidRootPart)
+    if not updateCommandCooldown() then
+        client:sendToClient("Rat", "notification", {
+            text = "Слишком много команд за короткое время. Подождите немного.",
+            type = "warning"
+        })
+        return false, "Превышен лимит команд"
+    end
+    
+    -- Добавляем команду в кулдаун
+    commandCooldowns[commandName .. tostring(tick())] = tick()
+    
+    -- Вызываем оригинальную функцию
+    return originalExecuteCommand(commandName, arg, player, character, humanoid, humanoidRootPart)
+end
