@@ -987,230 +987,117 @@ registerCommandHandler("loadpositionING", function(arg, player, character, human
     return true
 end)
 
-registerCommandHandler("getgameobjectsING", function(arg, player, character, humanoid, humanoidRootPart)
-    local success, errorMsg = pcall(function()
-        -- Функция для получения свойств объекта
-        local function getProperties(instance)
-            local properties = {}
-            
-            -- Список свойств, которые мы хотим получить
-            local propertyList = {
-                "Name", "ClassName", "Parent", "Position", "Size", "CFrame", 
-                "Anchored", "CanCollide", "Transparency", "Color", "Material",
-                "Enabled", "Visible", "Value", "Text", "TextColor3", "BackgroundColor3",
-                "Health", "MaxHealth", "WalkSpeed", "JumpPower"
-            }
-            
-            for _, propName in ipairs(propertyList) do
-                local success, value = pcall(function()
-                    return instance[propName]
-                end)
-                
-                if success and value ~= nil then
-                    -- Преобразуем значение в строку
-                    local valueStr
-                    if typeof(value) == "Vector3" then
-                        valueStr = string.format("%.2f, %.2f, %.2f", value.X, value.Y, value.Z)
-                    elseif typeof(value) == "Color3" then
-                        valueStr = string.format("%.2f, %.2f, %.2f", value.R, value.G, value.B)
-                    elseif typeof(value) == "CFrame" then
-                        local pos = value.Position
-                        valueStr = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
-                    else
-                        valueStr = tostring(value)
+local lastChatMessages = {}
+
+-- Функция для добавления сообщения в историю
+local function addChatMessage(player, message)
+    table.insert(lastChatMessages, 1, {
+        player = player,
+        message = message,
+        time = os.time()
+    })
+    
+    -- Храним только последние 50 сообщений
+    if #lastChatMessages > 50 then
+        table.remove(lastChatMessages)
+    end
+end
+
+-- Подключаемся к событиям чата
+game:GetService("Players").PlayerChatted:Connect(function(chatType, player, message)
+    addChatMessage(player.Name, message)
+end)
+
+-- Глобальная переменная для отслеживания состояния мониторинга
+local isMonitoring = false
+
+registerCommandHandler("monitorING", function(arg, player, character, humanoid, humanoidRootPart)
+    isMonitoring = true
+    
+    -- Функция для получения расстояния между двумя позициями
+    local function getDistance(pos1, pos2)
+        return (pos1 - pos2).Magnitude
+    end
+    
+    -- Функция для получения состояния персонажа
+    local function getCharacterState(humanoid)
+        if humanoid.Jump then
+            return "Прыжок"
+        elseif humanoid.MoveDirection.Magnitude > 0 then
+            if humanoid.WalkSpeed > 20 then
+                return "Бег"
+            else
+                return "Ходьба"
+            end
+        elseif humanoid.Sit then
+            return "Сидит"
+        else
+            return "Стоит"
+        end
+    end
+    
+    -- Функция для отправки данных мониторинга
+    local function sendMonitorData()
+        if not isMonitoring then return end
+        
+        -- Собираем данные о ближайших игроках
+        local nearbyPlayers = {}
+        for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+            if otherPlayer ~= player and otherPlayer.Character then
+                local otherHRP = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if otherHRP then
+                    local distance = getDistance(humanoidRootPart.Position, otherHRP.Position)
+                    if distance <= 100 then
+                        table.insert(nearbyPlayers, {
+                            name = otherPlayer.Name,
+                            distance = math.floor(distance),
+                            health = math.floor(otherPlayer.Character.Humanoid.Health),
+                            state = getCharacterState(otherPlayer.Character.Humanoid)
+                        })
                     end
-                    
-                    -- Проверяем, можно ли редактировать свойство
-                    local isEditable = pcall(function()
-                        instance[propName] = value
-                    end)
-                    
-                    table.insert(properties, {
-                        name = propName,
-                        value = valueStr,
-                        type = typeof(value),
-                        editable = isEditable
-                    })
                 end
             end
-            
-            return properties
         end
         
-        -- Функция для рекурсивного обхода объектов
-        local function processInstance(instance, path, maxDepth, currentDepth)
-            if currentDepth > maxDepth then
-                return nil
-            end
-            
-            local result = {
-                name = instance.Name,
-                className = instance.ClassName,
-                path = path,
-                properties = getProperties(instance),
-                children = {}
-            }
-            
-            -- Получаем дочерние объекты
-            local children = instance:GetChildren()
-            for _, child in ipairs(children) do
-                local childPath = path .. "." .. child.Name
-                local childData = processInstance(child, childPath, maxDepth, currentDepth + 1)
-                if childData then
-                    table.insert(result.children, childData)
-                end
-            end
-            
-            return result
-        end
-        
-        -- Собираем данные о структуре игры
-        local results = {}
-        local maxDepth = 3  -- Ограничиваем глубину для производительности
-        
-        -- Обрабатываем основные сервисы
-        local services = {
-            game:GetService("Workspace"),
-            game:GetService("Players"),
-            game:GetService("Lighting"),
-            game:GetService("ReplicatedStorage"),
-            game:GetService("StarterGui"),
-            game:GetService("StarterPack")
+        -- Собираем статистику персонажа
+        local stats = {
+            health = math.floor(humanoid.Health),
+            maxHealth = math.floor(humanoid.MaxHealth),
+            walkSpeed = math.floor(humanoid.WalkSpeed),
+            jumpPower = math.floor(humanoid.JumpPower),
+            state = getCharacterState(humanoid)
         }
         
-        for _, service in ipairs(services) do
-            local serviceData = processInstance(service, service.Name, maxDepth, 1)
-            if serviceData then
-                table.insert(results, serviceData)
-            end
-        end
-        
-        -- Отправляем результаты клиенту
-        client:sendToClient("Rat", "gameobjectsdata", game:GetService("HttpService"):JSONEncode(results))
-    end)
-    
-    if not success then
-        client:sendToClient("Rat", "notification", {
-            text = "Ошибка при получении структуры игры: " .. errorMsg,
-            type = "error"
-        })
-        return false, errorMsg
+        -- Отправляем все данные клиенту
+        client:sendToClient("Rat", "monitorData", game:GetService("HttpService"):JSONEncode({
+            nearbyPlayers = nearbyPlayers,
+            chatMessages = lastChatMessages,
+            characterStats = stats,
+            position = {
+                x = math.floor(humanoidRootPart.Position.X * 10) / 10,
+                y = math.floor(humanoidRootPart.Position.Y * 10) / 10,
+                z = math.floor(humanoidRootPart.Position.Z * 10) / 10
+            }
+        }))
     end
+    
+    -- Запускаем цикл обновления данных
+    spawn(function()
+        while isMonitoring do
+            sendMonitorData()
+            wait(0.5) -- Обновляем каждые 0.5 секунды
+        end
+    end)
     
     return true
 end)
 
-registerCommandHandler("dexING", function(arg, player, character, humanoid, humanoidRootPart)
-    -- Отправляем запрос на получение структуры игры
-    local success, errorMsg = pcall(function()
-        -- Функция для получения свойств объекта
-        local function getProperties(instance)
-            local properties = {}
-            
-            -- Список свойств, которые мы хотим получить
-            local propertyList = {
-                "Name", "ClassName", "Parent", "Position", "Size", "CFrame", 
-                "Anchored", "CanCollide", "Transparency", "Color", "Material",
-                "Enabled", "Visible", "Value", "Text", "TextColor3", "BackgroundColor3",
-                "Health", "MaxHealth", "WalkSpeed", "JumpPower"
-            }
-            
-            for _, propName in ipairs(propertyList) do
-                local success, value = pcall(function()
-                    return instance[propName]
-                end)
-                
-                if success and value ~= nil then
-                    -- Преобразуем значение в строку
-                    local valueStr
-                    if typeof(value) == "Vector3" then
-                        valueStr = string.format("%.2f, %.2f, %.2f", value.X, value.Y, value.Z)
-                    elseif typeof(value) == "Color3" then
-                        valueStr = string.format("%.2f, %.2f, %.2f", value.R, value.G, value.B)
-                    elseif typeof(value) == "CFrame" then
-                        local pos = value.Position
-                        valueStr = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
-                    else
-                        valueStr = tostring(value)
-                    end
-                    
-                    -- Проверяем, можно ли редактировать свойство
-                    local isEditable = pcall(function()
-                        instance[propName] = value
-                    end)
-                    
-                    table.insert(properties, {
-                        name = propName,
-                        value = valueStr,
-                        type = typeof(value),
-                        editable = isEditable
-                    })
-                end
-            end
-            
-            return properties
-        end
-        
-        -- Функция для рекурсивного обхода объектов
-        local function processInstance(instance, path, maxDepth, currentDepth)
-            if currentDepth > maxDepth then
-                return nil
-            end
-            
-            local result = {
-                name = instance.Name,
-                className = instance.ClassName,
-                path = path,
-                properties = getProperties(instance),
-                children = {}
-            }
-            
-            -- Получаем дочерние объекты
-            local children = instance:GetChildren()
-            for _, child in ipairs(children) do
-                local childPath = path .. "." .. child.Name
-                local childData = processInstance(child, childPath, maxDepth, currentDepth + 1)
-                if childData then
-                    table.insert(result.children, childData)
-                end
-            end
-            
-            return result
-        end
-        
-        -- Собираем данные о структуре игры
-        local results = {}
-        local maxDepth = 3  -- Ограничиваем глубину для производительности
-        
-        -- Обрабатываем основные сервисы
-        local services = {
-            game:GetService("Workspace"),
-            game:GetService("Players"),
-            game:GetService("Lighting"),
-            game:GetService("ReplicatedStorage"),
-            game:GetService("StarterGui"),
-            game:GetService("StarterPack")
-        }
-        
-        for _, service in ipairs(services) do
-            local serviceData = processInstance(service, service.Name, maxDepth, 1)
-            if serviceData then
-                table.insert(results, serviceData)
-            end
-        end
-        
-        -- Отправляем результаты клиенту
-        client:sendToClient("Rat", "gameobjectsdata", game:GetService("HttpService"):JSONEncode(results))
-    end)
-    
-    if not success then
-        client:sendToClient("Rat", "notification", {
-            text = "Ошибка при получении структуры игры: " .. errorMsg,
-            type = "error"
-        })
-        return false, errorMsg
-    end
-    
+registerCommandHandler("stopmonitorING", function(arg, player, character, humanoid, humanoidRootPart)
+    isMonitoring = false
+    client:sendToClient("Rat", "notification", {
+        text = "Мониторинг остановлен",
+        type = "info"
+    })
     return true
 end)
 
