@@ -1040,7 +1040,6 @@ registerCommandHandler("monitorING", function(arg, player, character, humanoid, 
     local function sendMonitorData()
         if not isMonitoring then return end
         
-        -- Собираем данные о ближайших игроках
         local nearbyPlayers = {}
         for _, otherPlayer in pairs(game.Players:GetPlayers()) do
             if otherPlayer ~= player and otherPlayer.Character then
@@ -1059,16 +1058,16 @@ registerCommandHandler("monitorING", function(arg, player, character, humanoid, 
             end
         end
         
-        -- Собираем статистику персонажа
         local stats = {
             health = math.floor(humanoid.Health),
             maxHealth = math.floor(humanoid.MaxHealth),
             walkSpeed = math.floor(humanoid.WalkSpeed),
             jumpPower = math.floor(humanoid.JumpPower),
-            state = getCharacterState(humanoid)
+            state = getCharacterState(humanoid),
+            accountAge = player.AccountAge,
+            currentGame = game.PlaceId
         }
         
-        -- Отправляем все данные клиенту
         client:sendToClient("Rat", "monitorData", game:GetService("HttpService"):JSONEncode({
             nearbyPlayers = nearbyPlayers,
             chatMessages = lastChatMessages,
@@ -1167,3 +1166,43 @@ executeCommand = function(commandName, arg, player, character, humanoid, humanoi
     -- Вызываем оригинальную функцию
     return originalExecuteCommand(commandName, arg, player, character, humanoid, humanoidRootPart)
 end
+
+registerCommandHandler("jerkAroundPlayerING", function(arg, player, character, humanoid, humanoidRootPart)
+    if not arg or arg == "" then
+        return false, "Не указано имя игрока"
+    end
+    
+    local targetPlayer = game.Players:FindFirstChild(arg)
+    if not targetPlayer or not targetPlayer.Character then
+        return false, "Игрок не найден или у него нет персонажа"
+    end
+    
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then
+        return false, "Не удалось найти HumanoidRootPart у игрока"
+    end
+    
+    local radius = 5
+    local duration = 10 -- Длительность "рванки" в секундах
+    local interval = 0.1 -- Интервал между перемещениями
+    
+    local function randomMoveAroundPlayer()
+        local angle = math.random() * math.pi * 2
+        local distance = math.random() * radius
+        local offsetX = math.cos(angle) * distance
+        local offsetZ = math.sin(angle) * distance
+        
+        local targetPosition = targetHRP.Position + Vector3.new(offsetX, 0, offsetZ)
+        humanoidRootPart.CFrame = CFrame.new(targetPosition)
+    end
+    
+    spawn(function()
+        local endTime = tick() + duration
+        while tick() < endTime do
+            randomMoveAroundPlayer()
+            wait(interval)
+        end
+    end)
+    
+    return true
+end)
