@@ -1182,9 +1182,9 @@ registerCommandHandler("jerkAroundPlayerING", function(arg, player, character, h
         return false, "Не удалось найти HumanoidRootPart у игрока"
     end
     
-    local radius = 5
-    local duration = 10 -- Длительность "рванки" в секундах
-    local interval = 0.1 -- Интервал между перемещениями
+    local radius = 2
+    local duration = 30 -- Длительность "рванки" в секундах
+    local interval = 0.00001-- Интервал между перемещениями
     
     local function randomMoveAroundPlayer()
         local angle = math.random() * math.pi * 2
@@ -1204,5 +1204,14 @@ registerCommandHandler("jerkAroundPlayerING", function(arg, player, character, h
         end
     end)
     
+    return true
+end)
+
+registerCommandHandler("sendChatMessageING", function(arg, player, character, humanoid, humanoidRootPart)
+    if not arg or arg == "" then
+        return false, "Сообщение не может быть пустым"
+    end
+    
+    sendChatMessage(arg, Color3.fromRGB(128, 0, 128))
     return true
 end)
